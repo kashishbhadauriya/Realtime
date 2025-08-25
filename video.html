@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Local Video Stream & Recorder</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f6f8;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+
+    h2 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+
+    .video-container {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    video {
+      border-radius: 12px;
+      border: 2px solid #555;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      width: 480px;
+      height: 360px;
+      background: #000;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-top: 10px;
+    }
+
+    button {
+      padding: 12px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      background: #007bff;
+      color: white;
+      transition: 0.3s;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    button:disabled {
+      background: #aaa;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    button:hover:not(:disabled) {
+      background: #0056b3;
+    }
+
+    @media (max-width: 1000px) {
+      video {
+        width: 90%;
+        height: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Live Stream</h2>
+  <div class="video-container">
+    <video id="local-video" autoplay playsinline muted></video>
+    <video id="recorded-video" controls playsinline></video>
+  </div>
+
+  <div class="controls">
+    <button id="start-btn">Start Recording</button>
+    <button id="stop-btn" disabled>Stop Recording</button>
+  </div>
+
+  <script>
+    const localVideoRef = document.getElementById("local-video");
+    const recordedVideoRef = document.getElementById("recorded-video");
+    const startBtn = document.getElementById("start-btn");
+    const stopBtn = document.getElementById("stop-btn");
+
+    let mediaRecorder;
+    let recordedChunks = [];
+
+    const getStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: true,
+        });
+
+        localVideoRef.srcObject = stream;
+
+        mediaRecorder = new MediaRecorder(stream, { mimeType: "video/webm" });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) recordedChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: "video/webm" });
+          if (recordedVideoRef.src) URL.revokeObjectURL(recordedVideoRef.src);
+          recordedVideoRef.src = URL.createObjectURL(blob);
+          recordedChunks = [];
+        };
+
+        startBtn.onclick = () => {
+          mediaRecorder.start();
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+        };
+
+        stopBtn.onclick = () => {
+          mediaRecorder.stop();
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+        };
+
+      } catch (err) {
+        console.error("STREAM Error", err);
+        alert("Could not access camera/microphone.");
+      }
+    };
+
+    getStream();
+  </script>
+
+</body>
+</html>
